@@ -14,12 +14,15 @@ const exec = require('child_process').exec;
 module.exports = NodeHelper.create({
     start: function () {
         this.started = false;
+        console.log('[PIR-Sensor] Module started');
     },
 
     activateMonitor: function () {
+        console.log('[PIR-Sensor] Attempting to activate monitor');
         // If always-off is enabled, keep monitor deactivated
         let alwaysOffTrigger = this.alwaysOff && (this.alwaysOff.readSync() === this.config.alwaysOffState)
         if (alwaysOffTrigger) {
+            console.log('[PIR-Sensor] Monitor activation blocked by always-off trigger');
             return;
         }
         // If relays are being used in place of HDMI
@@ -29,9 +32,9 @@ module.exports = NodeHelper.create({
         else if (this.config.relayPin === false) {
             // Check if hdmi output is already on
             const self = this;
-            exec("/usr/bin/vcgencmd display_power").stdout.on('data', function(data) {
+            exec("sudo /usr/bin/vcgencmd display_power").stdout.on('data', function(data) {
 		if (data.indexOf("display_power=0") === 0) {
-                    exec("/usr/bin/vcgencmd display_power 1", null);
+                    exec("sudo /usr/bin/vcgencmd display_power 1", null);
 	 	}
  	        if (self.config.supportCEC)
     	            exec("echo 'on 0' | cec-client -s -d 1");
@@ -58,7 +61,7 @@ module.exports = NodeHelper.create({
         else if (this.config.relayPin === false) {
 	    if (this.config.supportCEC)
 	        exec("echo 'standby 0' | cec-client -s -d 1");
-            exec("/usr/bin/vcgencmd display_power 0", null);
+            exec("sudo /usr/bin/vcgencmd display_power 0", null);
         }
 	if (this.config.preventHDMITimeout > 0 && this.config.preventHDMITimeout < 10) {
             const self = this;
@@ -87,6 +90,7 @@ module.exports = NodeHelper.create({
         if (notification === 'CONFIG' && this.started == false) {
             const self = this;
             this.config = payload;
+            console.log('[PIR-Sensor] Received configuration:', JSON.stringify(this.config));
 
 	    if (self.config.powerSaving) {
                 self.deactivateMonitorTimeout = setTimeout(function() { // Set the timeout before movement is identified
@@ -153,7 +157,14 @@ module.exports = NodeHelper.create({
 	    }
 
             // Setup for sensor pin
-            this.pir = new Gpio(this.config.sensorPin, 'in', 'both');
+            try {
+                console.log('[PIR-Sensor] Initializing PIR sensor on GPIO pin:', this.config.sensorPin);
+                this.pir = new Gpio(this.config.sensorPin, 'in', 'both');
+                console.log('[PIR-Sensor] PIR sensor initialized successfully');
+            } catch (error) {
+                console.error('[PIR-Sensor] Failed to initialize PIR sensor:', error.message);
+                return;
+            }
 
             // Setup value which represent on and off
             const valueOn = this.config.sensorState;
@@ -161,6 +172,13 @@ module.exports = NodeHelper.create({
 
             // Detected movement
             this.pir.watch(function (err, value) {
+                if (err) {
+                    console.error('[PIR-Sensor] Error reading PIR sensor:', err.message);
+                    return;
+                }
+                
+                console.log('[PIR-Sensor] Sensor state changed:', value === valueOn ? 'MOVEMENT DETECTED' : 'NO MOVEMENT');
+                
                 if (value == valueOn) {
                     self.sendSocketNotification('USER_PRESENCE', true);
                     if (self.config.powerSaving){
