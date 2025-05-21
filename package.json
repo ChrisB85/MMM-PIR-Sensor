@@ -24,7 +24,10 @@
     "postinstall": "node_modules/.bin/electron-rebuild -e ../../node_modules/electron"
   },
   "dependencies": {
-    "onoff": "latest",
-    "electron-rebuild": "^1.2.1"
+    "electron-rebuild": "^1.2.1",
+    "onoff": "latest"
+  },
+  "devDependencies": {
+    "@electron/rebuild": "^4.0.1"
   }
 }
