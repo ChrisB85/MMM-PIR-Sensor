@@ -97,20 +97,39 @@ module.exports = NodeHelper.create({
             console.log('[PIR-Sensor] Connected to MQTT broker');
             // Publish Home Assistant discovery config
             const topicPrefix = mqttConfig.topic_prefix || 'magicmirror';
-            const discoveryTopic = `${topicPrefix}/binary_sensor/pir/config`;
+            const discoveryTopic = `homeassistant/binary_sensor/${topicPrefix}_pir/config`;
             const stateTopic = `${topicPrefix}/pir/state`;
             const discoveryPayload = {
               name: 'MagicMirror PIR Sensor',
               state_topic: stateTopic,
               device_class: 'motion',
-              unique_id: 'magicmirror_pir_sensor'
+              unique_id: `${topicPrefix}_pir_sensor`,
+              device: {
+                name: 'MagicMirror',
+                model: 'PIR Motion Sensor',
+                manufacturer: 'MagicMirror',
+                identifiers: [`${topicPrefix}_pir`]
+              },
+              availability_topic: `${topicPrefix}/pir/availability`,
+              payload_available: 'online',
+              payload_not_available: 'offline',
+              state_on: 'ON',
+              state_off: 'OFF'
             };
             this.mqttClient.publish(discoveryTopic, JSON.stringify(discoveryPayload), { retain: true });
+            this.mqttClient.publish(`${topicPrefix}/pir/availability`, 'online', { retain: true });
             this.mqttStateTopic = stateTopic;
           });
 
           this.mqttClient.on('error', (error) => {
             console.error('[PIR-Sensor] MQTT error:', error);
+          });
+
+          this.mqttClient.on('close', () => {
+            if (this.mqttClient) {
+              const topicPrefix = mqttConfig.topic_prefix || 'magicmirror';
+              this.mqttClient.publish(`${topicPrefix}/pir/availability`, 'offline', { retain: true });
+            }
           });
         } catch (error) {
           console.error('[PIR-Sensor] Failed to initialize MQTT:', error);
