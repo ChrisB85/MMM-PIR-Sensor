@@ -10,11 +10,20 @@
 const NodeHelper = require('node_helper');
 const { Chip, Line } = require('node-libgpiod');
 const exec = require('child_process').exec;
+const mqtt = require('mqtt');
 
 module.exports = NodeHelper.create({
   start() {
     this.started = false;
+    this.mqttClient = null;
     console.log('[PIR-Sensor] Module started');
+  },
+
+  stop() {
+    if (this.mqttClient) {
+      this.mqttClient.end();
+      this.mqttClient = null;
+    }
   },
 
   activateMonitor() {
@@ -72,6 +81,41 @@ module.exports = NodeHelper.create({
       const self = this;
       this.config = payload;
       console.log('[PIR-Sensor] Received configuration:', JSON.stringify(this.config));
+
+      // Initialize MQTT if configured
+      if (this.config.mqtt) {
+        try {
+          const mqttConfig = this.config.mqtt;
+          const mqttUrl = `mqtt://${mqttConfig.host}:${mqttConfig.port || 1883}`;
+          this.mqttClient = mqtt.connect(mqttUrl, {
+            username: mqttConfig.username,
+            password: mqttConfig.password,
+            clientId: `magicmirror-pir-${Math.random().toString(16).slice(3)}`
+          });
+
+          this.mqttClient.on('connect', () => {
+            console.log('[PIR-Sensor] Connected to MQTT broker');
+            // Publish Home Assistant discovery config
+            const topicPrefix = mqttConfig.topic_prefix || 'magicmirror';
+            const discoveryTopic = `${topicPrefix}/binary_sensor/pir/config`;
+            const stateTopic = `${topicPrefix}/pir/state`;
+            const discoveryPayload = {
+              name: 'MagicMirror PIR Sensor',
+              state_topic: stateTopic,
+              device_class: 'motion',
+              unique_id: 'magicmirror_pir_sensor'
+            };
+            this.mqttClient.publish(discoveryTopic, JSON.stringify(discoveryPayload), { retain: true });
+            this.mqttStateTopic = stateTopic;
+          });
+
+          this.mqttClient.on('error', (error) => {
+            console.error('[PIR-Sensor] MQTT error:', error);
+          });
+        } catch (error) {
+          console.error('[PIR-Sensor] Failed to initialize MQTT:', error);
+        }
+      }
 
       // inicjalizacja libgpiod
       this.chip = new Chip(0);
@@ -161,6 +205,10 @@ module.exports = NodeHelper.create({
               clearTimeout(self.deactivateMonitorTimeout);
               self.activateMonitor();
             }
+            // Publish to MQTT
+            if (self.mqttClient && self.mqttStateTopic) {
+              self.mqttClient.publish(self.mqttStateTopic, 'ON');
+            }
           } else {
             self.sendSocketNotification('USER_PRESENCE', false);
             if (self.config.powerSaving) {
@@ -168,6 +216,10 @@ module.exports = NodeHelper.create({
                 () => self.deactivateMonitor(),
                 this.config.powerSavingDelay * 1000
               );
+            }
+            // Publish to MQTT
+            if (self.mqttClient && self.mqttStateTopic) {
+              self.mqttClient.publish(self.mqttStateTopic, 'OFF');
             }
           }
           this.prevSensor = v;

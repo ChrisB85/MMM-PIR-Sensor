@@ -179,6 +179,21 @@ The following properties can be configured:
 				<br><b>Note: </b> Don't forget to turn this one off when using the actual IR sensor!
 			</td>
 		</tr>
+		<tr>
+			<td><code>mqtt</code></td>
+			<td>MQTT configuration for Home Assistant integration
+				<br><b>Possible values:</b> <code>object</code>
+				<br><b>Default value:</b> <code>false</code>
+				<br><b>Example:</b> <code>{ host: "192.168.1.100", port: 1883, username: "user", password: "pass", topic_prefix: "home/magicmirror" }</code>
+				<br><b>Note: </b> When configured, the PIR sensor state will be published to MQTT topics for Home Assistant discovery
+				<br><b>Configuration options:</b>
+				<br>- <code>host</code>: MQTT broker hostname or IP address
+				<br>- <code>port</code>: MQTT broker port (default: 1883)
+				<br>- <code>username</code>: MQTT broker username
+				<br>- <code>password</code>: MQTT broker password
+				<br>- <code>topic_prefix</code>: Custom prefix for MQTT topics (default: "magicmirror")
+			</td>
+		</tr>
 	</tbody>
 </table>
 
@@ -198,7 +213,14 @@ modules: [
 			presenceIndicator: "fa-eye", // Customizing the indicator
 			presenceOffIndicator: "fa-eye", // Customizing the indicator
 			presenceIndicatorColor: "#f51d16", // Customizing the indicator
-			presenceOffIndicatorColor: "#2b271c" // Customizing the indicator
+			presenceOffIndicatorColor: "#2b271c", // Customizing the indicator
+			mqtt: {
+				host: "192.168.1.100",
+				port: 1883,
+				username: "user",
+				password: "pass",
+				topic_prefix: "home/magicmirror" // Optional: customize MQTT topic prefix
+			}
 		}
 	}
 ]
@@ -217,7 +239,7 @@ Copyright © 2016 Paul-Vincent Roll
 
 Permission is hereby granted, free of charge, to any person
 obtaining a copy of this software and associated documentation
-files (the “Software”), to deal in the Software without
+files (the "Software"), to deal in the Software without
 restriction, including without limitation the rights to use,
 copy, modify, merge, publish, distribute, sublicense, and/or sell
 copies of the Software, and to permit persons to whom the
@@ -227,4 +249,4 @@ conditions:
 The above copyright notice and this permission notice shall be
 included in all copies or substantial portions of the Software.
 
-**The software is provided “as is”, without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the software or the use or other dealings in the software.**
+**The software is provided "as is", without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose and noninfringement. In no event shall the authors or copyright holders be liable for any claim, damages or other liability, whether in an action of contract, tort or otherwise, arising from, out of or in connection with the software or the use or other dealings in the software.**

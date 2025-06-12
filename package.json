@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "electron-rebuild": "^1.2.1",
+    "mqtt": "^5.3.5",
     "node-libgpiod": "^0.5.0",
     "onoff": "latest"
   },
