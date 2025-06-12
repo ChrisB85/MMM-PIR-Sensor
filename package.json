@@ -25,6 +25,7 @@
   },
   "dependencies": {
     "electron-rebuild": "^1.2.1",
+    "node-libgpiod": "^0.5.0",
     "onoff": "latest"
   },
   "devDependencies": {
