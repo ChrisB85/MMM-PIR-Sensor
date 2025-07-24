@@ -169,11 +169,20 @@ module.exports = NodeHelper.create({
         try {
           const mqttConfig = this.config.mqtt;
           const mqttUrl = `mqtt://${mqttConfig.host}:${mqttConfig.port || 1883}`;
-          this.mqttClient = mqtt.connect(mqttUrl, {
+          
+          // MQTT connection options with automatic reconnection
+          const mqttOptions = {
             username: mqttConfig.username,
             password: mqttConfig.password,
-            clientId: `magicmirror-pir-${Math.random().toString(16).slice(3)}`
-          });
+            clientId: `magicmirror-pir-${Math.random().toString(16).slice(3)}`,
+            reconnectPeriod: 5000, // Reconnect every 5 seconds
+            connectTimeout: 30000, // 30 second connection timeout
+            keepalive: 60, // Keep alive interval
+            clean: true
+          };
+          
+          this.mqttClient = mqtt.connect(mqttUrl, mqttOptions);
+          this.mqttConfig = mqttConfig; // Store config for reconnection
 
           this.mqttClient.on('connect', () => {
             console.log('[PIR-Sensor] Connected to MQTT broker');
@@ -208,10 +217,21 @@ module.exports = NodeHelper.create({
           });
 
           this.mqttClient.on('close', () => {
+            console.log('[PIR-Sensor] MQTT connection closed, attempting to reconnect...');
             if (this.mqttClient) {
               const topicPrefix = mqttConfig.topic_prefix || 'magicmirror';
               this.mqttClient.publish(`${topicPrefix}/pir/availability`, 'offline', { retain: true });
             }
+          });
+
+          this.mqttClient.on('reconnect', () => {
+            console.log('[PIR-Sensor] MQTT reconnecting...');
+          });
+
+          this.mqttClient.on('offline', () => {
+            console.log('[PIR-Sensor] MQTT client offline');
+            const topicPrefix = mqttConfig.topic_prefix || 'magicmirror';
+            this.mqttClient.publish(`${topicPrefix}/pir/availability`, 'offline', { retain: true });
           });
         } catch (error) {
           console.error('[PIR-Sensor] Failed to initialize MQTT:', error);
